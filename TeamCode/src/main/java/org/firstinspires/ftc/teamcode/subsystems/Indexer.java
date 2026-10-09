@@ -18,6 +18,11 @@ public class Indexer extends SubsystemBase {
         return runOnce(() -> indexerMotor.setPower(power));
     }
 
+    /** Runs the indexer until the command is cancelled, then stops it. */
+    public Command feed(double power) {
+        return runEnd(() -> indexerMotor.setPower(power), () -> indexerMotor.setPower(0));
+    }
+
     public Command stop(){
         return runOnce(() -> indexerMotor.setPower(0));
     }

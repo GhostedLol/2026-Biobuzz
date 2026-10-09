@@ -6,17 +6,16 @@ import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
 import com.qualcomm.robotcore.hardware.IMU;
+import com.seattlesolvers.solverslib.command.SubsystemBase;
+
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 
-public class Drive {
+public class Drive extends SubsystemBase {
     private final DcMotor frontLeft;
     private final DcMotor frontRight;
     private final DcMotor backLeft;
     private final DcMotor backRight;
     private final IMU imu;
-
-    private double left;
-    private double right;
 
     public Drive(HardwareMap hardwareMap) {
         frontLeft = hardwareMap.get(DcMotor.class, "frontLeft");
@@ -28,6 +27,7 @@ public class Drive {
 
         backRight = hardwareMap.get(DcMotor.class, "backRight");
         backRight.setDirection(DcMotorSimple.Direction.REVERSE);
+
         imu = hardwareMap.get(IMU.class, "imu");
         imu.initialize(new IMU.Parameters(new RevHubOrientationOnRobot(
                 RevHubOrientationOnRobot.LogoFacingDirection.UP,
@@ -35,29 +35,30 @@ public class Drive {
         imu.resetYaw();
     }
 
-    public void drive(double drive, double turn) {
-        left  = drive + turn;
-        right = drive - turn;
+    public void drive(double y, double x, double rx) {
+        double botHeading = imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS);
 
-        double max = Math.max(Math.abs(left), Math.abs(right));
-        if (max > 1.0)
-        {
-            left /= max;
-            right /= max;
-        }
+        double rotX = x * Math.cos(-botHeading) - y * Math.sin(-botHeading);
+        double rotY = x * Math.sin(-botHeading) + y * Math.cos(-botHeading);
 
-        frontLeft.setPower(left);
-        frontRight.setPower(right);
-        backLeft.setPower(left);
-        backRight.setPower(right);
+        rotX = rotX * 1.1;
+
+        double denominator = Math.max(Math.abs(rotY) + Math.abs(rotX) + Math.abs(rx), 1);
+        frontLeft.setPower((rotY + rotX + rx) / denominator);
+        backLeft.setPower((rotY - rotX + rx) / denominator);
+        frontRight.setPower((rotY - rotX - rx) / denominator);
+        backRight.setPower((rotY + rotX - rx) / denominator);
     }
 
-    public double getLeft() {
-        return left;
+    public void stop() {
+        frontLeft.setPower(0);
+        backLeft.setPower(0);
+        frontRight.setPower(0);
+        backRight.setPower(0);
     }
 
-    public double getRight() {
-        return right;
+    public void resetYaw() {
+        imu.resetYaw();
     }
 
     public double getHeading() {
@@ -65,14 +66,11 @@ public class Drive {
     }
 
     public void addTelemetry(TelemetryPacket packet) {
-        packet.put("left", left);
-        packet.put("right", right);
         packet.put("heading", getHeading());
 
         packet.put("flPower", frontLeft.getPower());
         packet.put("frPower", frontRight.getPower());
         packet.put("blPower", backLeft.getPower());
         packet.put("brPower", backRight.getPower());
-
     }
 }
