@@ -43,20 +43,20 @@ public class Robot {
                 drive.run(() -> drive.drive(
                         -gamepad.left_stick_y, gamepad.left_stick_x, gamepad.right_stick_x)));
 
-        driver.getGamepadButton(GamepadKeys.Button.OPTIONS)
-                .whenPressed(drive::resetYaw);
+//        driver.getGamepadButton(GamepadKeys.Button.OPTIONS)
+//                .whenPressed(drive::resetYaw);
 
 //      intake
         driver.getGamepadButton(GamepadKeys.Button.A)
                 .whenPressed(intake::toggle);
 
 //      indexer
-        driver.getGamepadButton(GamepadKeys.Button.A)
-                .whenPressed(indexer.run(0.5)).whenReleased(indexer.stop());
+        driver.getGamepadButton(GamepadKeys.Button.X)
+                .whenPressed(indexer.run(1)).whenReleased(indexer.stop());
 
     //      shooter
-        driver.getGamepadButton(GamepadKeys.Button.A)
-                .whenPressed(shooter.setRPM(1000)).whenReleased(shooter.stop());
+        driver.getGamepadButton(GamepadKeys.Button.Y)
+                .whenPressed(shooter.setPower(1)).whenReleased(shooter.stop());
 
         telemetry.addData("Status", "Initialized");
         telemetry.update();

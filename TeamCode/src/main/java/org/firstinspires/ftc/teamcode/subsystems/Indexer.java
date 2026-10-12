@@ -2,6 +2,7 @@ package org.firstinspires.ftc.teamcode.subsystems;
 
 import com.acmerobotics.dashboard.telemetry.TelemetryPacket;
 import com.qualcomm.robotcore.hardware.DcMotor;
+import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.seattlesolvers.solverslib.command.Command;
 import com.seattlesolvers.solverslib.command.SubsystemBase;
@@ -12,13 +13,13 @@ public class Indexer extends SubsystemBase {
 
     public Indexer(HardwareMap hardwareMap) {
         indexerMotor = hardwareMap.get(DcMotor.class, "indexerMotor");
+        indexerMotor.setDirection(DcMotorEx.Direction.REVERSE);
     }
 
     public Command run(double power) {
         return runOnce(() -> indexerMotor.setPower(power));
     }
 
-    /** Runs the indexer until the command is cancelled, then stops it. */
     public Command feed(double power) {
         return runEnd(() -> indexerMotor.setPower(power), () -> indexerMotor.setPower(0));
     }
