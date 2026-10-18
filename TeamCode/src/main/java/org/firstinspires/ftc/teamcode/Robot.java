@@ -5,7 +5,9 @@ import com.acmerobotics.dashboard.telemetry.TelemetryPacket;
 import com.qualcomm.robotcore.hardware.Gamepad;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.seattlesolvers.solverslib.command.CommandScheduler;
+import com.seattlesolvers.solverslib.command.InstantCommand;
 import com.seattlesolvers.solverslib.command.RunCommand;
+import com.seattlesolvers.solverslib.command.button.Trigger;
 import com.seattlesolvers.solverslib.gamepad.GamepadEx;
 import com.seattlesolvers.solverslib.gamepad.GamepadKeys;
 
@@ -24,6 +26,8 @@ public class Robot {
     private final GamepadEx driver;
     private final Telemetry telemetry;
     private final FtcDashboard dashboard;
+    private double shooterRPM = 3275;
+
 
     public Robot(HardwareMap hardwareMap, Gamepad gamepad, Telemetry telemetry) {
         this.telemetry = telemetry;
@@ -46,25 +50,29 @@ public class Robot {
 //        driver.getGamepadButton(GamepadKeys.Button.OPTIONS)
 //                .whenPressed(drive::resetYaw);
 
-//      intake
-        driver.getGamepadButton(GamepadKeys.Button.A)
-                .whenPressed(intake::toggle);
+//      intake: left bumper toggles forward, right bumper toggles reverse
+        driver.getGamepadButton(GamepadKeys.Button.LEFT_BUMPER)
+                .whenPressed(intake.toggle());
+
+        driver.getGamepadButton(GamepadKeys.Button.RIGHT_BUMPER)
+                .whenPressed(intake.reverse());
 
 //      indexer
-        driver.getGamepadButton(GamepadKeys.Button.X)
-                .whenPressed(indexer.run(1)).whenReleased(indexer.stop());
+//        driver.getGamepadButton(GamepadKeys.Button.X)
+//                .whenPressed(indexer.run(1)).whenReleased(indexer.stop());
 
     //      shooter
-        driver.getGamepadButton(GamepadKeys.Button.Y)
-                .whenPressed(shooter.setPower(1)).whenReleased(shooter.stop());
+        new Trigger(() -> driver.getTrigger(GamepadKeys.Trigger.RIGHT_TRIGGER) > 0.5)
+                .whenActive(shooter.shoot(indexer, shooterRPM, 1))
+                .whenInactive(indexer.stop().andThen(shooter.stop()));
+
+
 
         telemetry.addData("Status", "Initialized");
         telemetry.update();
     }
 
     public void robotPeriodic() {
-        intake.update();
-
         TelemetryPacket packet = new TelemetryPacket();
         drive.addTelemetry(packet);
         intake.addTelemetry(packet);

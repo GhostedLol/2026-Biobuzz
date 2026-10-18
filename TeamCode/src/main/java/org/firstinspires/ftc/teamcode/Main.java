@@ -11,6 +11,7 @@ import com.seattlesolvers.solverslib.command.CommandOpMode;
 public class Main extends CommandOpMode {
     @Override
     public void initialize() {
+        TestExpanderBusScan.scan(this);
         new Robot(hardwareMap, gamepad1, telemetry);
     }
 }

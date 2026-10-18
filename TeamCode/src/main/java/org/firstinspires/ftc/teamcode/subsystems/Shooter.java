@@ -4,6 +4,7 @@ import com.acmerobotics.dashboard.telemetry.TelemetryPacket;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.seattlesolvers.solverslib.command.Command;
+import com.seattlesolvers.solverslib.command.Commands;
 import com.seattlesolvers.solverslib.command.SubsystemBase;
 
 public class Shooter extends SubsystemBase {
@@ -11,6 +12,8 @@ public class Shooter extends SubsystemBase {
     // goBILDA 5000 Series 12VDC motor (5000-0002-4008), 6000 RPM, no gearbox: 28 encoder ticks per revolution
     private static final double TICKS_PER_REV = 28.0;
     private static final double TICKS_PER_SECOND_PER_RPM = TICKS_PER_REV / 60.0;
+    // Feed once within this many RPM of the target; the velocity PID tends to settle just under it
+    private static final double RPM_TOLERANCE = 50.0;
 
     private final DcMotorEx leftShooter;
     private final DcMotorEx rightShooter;
@@ -43,6 +46,18 @@ public class Shooter extends SubsystemBase {
             leftShooter.setVelocity(rpm * TICKS_PER_SECOND_PER_RPM);
             rightShooter.setVelocity(rpm * TICKS_PER_SECOND_PER_RPM);
         }, this::stopMotors);
+    }
+
+    /** Spins up to the given speed, then feeds with the indexer. Runs until cancelled, then stops both. */
+    public Command shoot(Indexer indexer, double rpm, double index) {
+        return Commands.parallel(
+                setRPM(rpm),
+                Commands.waitUntil(() -> atRPM(rpm)).andThen(indexer.feed(index)));
+    }
+
+    private boolean atRPM(double rpm) {
+        double averageVelocity = (leftShooter.getVelocity() + rightShooter.getVelocity()) / 2;
+        return averageVelocity >= (rpm - RPM_TOLERANCE) * TICKS_PER_SECOND_PER_RPM;
     }
 
     public Command setPower(double power) {
