@@ -9,6 +9,7 @@ import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.seattlesolvers.solverslib.command.Command;
+import com.seattlesolvers.solverslib.command.Commands;
 import com.seattlesolvers.solverslib.command.SubsystemBase;
 
 public class Drive extends SubsystemBase {
@@ -85,6 +86,14 @@ public class Drive extends SubsystemBase {
 
     public Command br(double power) {
         return runOnce(() -> backRight.setPower(power));
+    }
+
+    public Command sequence() {
+        return Commands.sequence(
+            fl(1), Commands.waitMillis(1500),
+            fr(1), Commands.waitMillis(1500),
+            bl(1), Commands.waitMillis(1500),
+            br(1));
     }
 
     public void resetYaw() {

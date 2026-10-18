@@ -14,6 +14,7 @@ public class Shooter extends SubsystemBase {
     private static final double TICKS_PER_SECOND_PER_RPM = TICKS_PER_REV / 60.0;
     // Feed once within this many RPM of the target; the velocity PID tends to settle just under it
     private static final double RPM_TOLERANCE = 50.0;
+    public final double SHOOTER_RPM = 3275;
 
     private final DcMotorEx leftShooter;
     private final DcMotorEx rightShooter;
@@ -41,23 +42,23 @@ public class Shooter extends SubsystemBase {
     }
 
     /** Holds the given speed until the command is cancelled, then stops the motors. */
-    public Command setRPM(double rpm) {
+    public Command setRPM() {
         return runEnd(() -> {
-            leftShooter.setVelocity(rpm * TICKS_PER_SECOND_PER_RPM);
-            rightShooter.setVelocity(rpm * TICKS_PER_SECOND_PER_RPM);
+            leftShooter.setVelocity(SHOOTER_RPM * TICKS_PER_SECOND_PER_RPM);
+            rightShooter.setVelocity(SHOOTER_RPM * TICKS_PER_SECOND_PER_RPM);
         }, this::stopMotors);
     }
 
     /** Spins up to the given speed, then feeds with the indexer. Runs until cancelled, then stops both. */
-    public Command shoot(Indexer indexer, double rpm, double index) {
+    public Command shoot(Indexer indexer) {
         return Commands.parallel(
-                setRPM(rpm),
-                Commands.waitUntil(() -> atRPM(rpm)).andThen(indexer.feed(index)));
+                setRPM(),
+                Commands.waitUntil(this::atRPM).andThen(indexer.feed(1)));
     }
 
-    private boolean atRPM(double rpm) {
+    private boolean atRPM() {
         double averageVelocity = (leftShooter.getVelocity() + rightShooter.getVelocity()) / 2;
-        return averageVelocity >= (rpm - RPM_TOLERANCE) * TICKS_PER_SECOND_PER_RPM;
+        return averageVelocity >= (SHOOTER_RPM - RPM_TOLERANCE) * TICKS_PER_SECOND_PER_RPM;
     }
 
     public Command setPower(double power) {

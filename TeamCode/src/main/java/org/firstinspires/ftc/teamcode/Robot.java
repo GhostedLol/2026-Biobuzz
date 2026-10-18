@@ -13,6 +13,7 @@ import com.seattlesolvers.solverslib.gamepad.GamepadKeys;
 
 import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.teamcode.subsystems.Drive;
+import org.firstinspires.ftc.teamcode.subsystems.Flower;
 import org.firstinspires.ftc.teamcode.subsystems.Indexer;
 import org.firstinspires.ftc.teamcode.subsystems.Intake;
 import org.firstinspires.ftc.teamcode.subsystems.Shooter;
@@ -22,11 +23,11 @@ public class Robot {
     private final Intake intake;
     private final Indexer indexer;
     private final Shooter shooter;
+    private final Flower flower;
 
     private final GamepadEx driver;
     private final Telemetry telemetry;
     private final FtcDashboard dashboard;
-    private double shooterRPM = 3275;
 
 
     public Robot(HardwareMap hardwareMap, Gamepad gamepad, Telemetry telemetry) {
@@ -34,9 +35,12 @@ public class Robot {
         dashboard = FtcDashboard.getInstance();
 
         drive = new Drive(hardwareMap);
+
         intake = new Intake(hardwareMap);
         indexer = new Indexer(hardwareMap);
         shooter = new Shooter(hardwareMap);
+
+        flower = new Flower(hardwareMap);
 
         driver = new GamepadEx(gamepad);
 
@@ -47,24 +51,23 @@ public class Robot {
                 drive.run(() -> drive.drive(
                         -gamepad.left_stick_y, gamepad.left_stick_x, gamepad.right_stick_x)));
 
-//        driver.getGamepadButton(GamepadKeys.Button.OPTIONS)
-//                .whenPressed(drive::resetYaw);
+        driver.getGamepadButton(GamepadKeys.Button.OPTIONS)
+                .whenPressed(drive::resetYaw);
 
-//      intake: left bumper toggles forward, right bumper toggles reverse
         driver.getGamepadButton(GamepadKeys.Button.LEFT_BUMPER)
                 .whenPressed(intake.toggle());
 
         driver.getGamepadButton(GamepadKeys.Button.RIGHT_BUMPER)
                 .whenPressed(intake.reverse());
 
-//      indexer
-//        driver.getGamepadButton(GamepadKeys.Button.X)
-//                .whenPressed(indexer.run(1)).whenReleased(indexer.stop());
-
     //      shooter
         new Trigger(() -> driver.getTrigger(GamepadKeys.Trigger.RIGHT_TRIGGER) > 0.5)
-                .whenActive(shooter.shoot(indexer, shooterRPM, 1))
+                .whenActive(shooter.shoot(indexer))
                 .whenInactive(indexer.stop().andThen(shooter.stop()));
+
+        new Trigger(() -> driver.getTrigger(GamepadKeys.Trigger.LEFT_TRIGGER) > 0.5)
+                .whenActive(flower.run())
+                .whenInactive(flower.reset());
 
 
 
