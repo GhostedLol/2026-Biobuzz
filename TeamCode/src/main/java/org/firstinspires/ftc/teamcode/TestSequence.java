@@ -10,7 +10,7 @@ import org.firstinspires.ftc.teamcode.subsystems.Intake;
 import org.firstinspires.ftc.teamcode.subsystems.Shooter;
 
 @Autonomous
-public class TestingSequence extends CommandOpMode {
+public class TestSequence extends CommandOpMode {
     private Autos autos;
 
     @Override

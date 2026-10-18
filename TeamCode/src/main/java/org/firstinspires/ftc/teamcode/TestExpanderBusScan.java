@@ -6,8 +6,10 @@ import com.qualcomm.hardware.lynx.LynxModule;
 import com.qualcomm.hardware.lynx.commands.core.LynxFirmwareVersionManager;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
+import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.hardware.I2cAddr;
 
+import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.robotcore.internal.system.AppUtil;
 
 /**
@@ -16,17 +18,34 @@ import org.firstinspires.ftc.robotcore.internal.system.AppUtil;
  * A line marked FOUND is where the board really is; 0x00 everywhere means it never answered.
  */
 @TeleOp(name = "Expander Bus Scan", group = "Diagnostics")
-public class ExpanderBusScan extends LinearOpMode {
+public class TestExpanderBusScan extends LinearOpMode {
     private static final int BUSES_PER_HUB = 4;
 
     @Override
     public void runOpMode() {
+        scan(this);
+
+        waitForStart();
+        while (opModeIsActive()) {
+            idle();
+        }
+    }
+
+    /**
+     * Runs the scan and leaves the results on telemetry. Can be called from any op mode's init.
+     *
+     * @return true if the expander answered somewhere
+     */
+    public static boolean scan(LinearOpMode opMode) {
+        HardwareMap hardwareMap = opMode.hardwareMap;
+        Telemetry telemetry = opMode.telemetry;
+        boolean autoClear = telemetry.isAutoClear();
         telemetry.setAutoClear(false);
         boolean found = false;
 
         for (LynxModule module : hardwareMap.getAll(LynxModule.class)) {
             String hub = "Hub (address " + module.getModuleAddress() + ")";
-            for (int bus = 0; bus < BUSES_PER_HUB && !isStopRequested(); bus++) {
+            for (int bus = 0; bus < BUSES_PER_HUB && !opMode.isStopRequested(); bus++) {
                 LynxI2cDeviceSynch client = LynxFirmwareVersionManager.createLynxI2cDeviceSynch(
                         AppUtil.getDefContext(), module, bus);
                 StringBuilder line = new StringBuilder();
@@ -49,10 +68,7 @@ public class ExpanderBusScan extends LinearOpMode {
                 ? "Expander FOUND - configure it on the hub, bus and address marked above."
                 : "Expander did NOT answer on any bus (expected ID 0xB2) - wiring, power or firmware.");
         telemetry.update();
-
-        waitForStart();
-        while (opModeIsActive()) {
-            idle();
-        }
+        telemetry.setAutoClear(autoClear);
+        return found;
     }
 }

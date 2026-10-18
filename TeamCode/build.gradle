@@ -30,6 +30,51 @@ dependencies {
     implementation "org.solverslib:core:0.3.6"
 }
 
+// Auto-connect adb to the robot over Wi-Fi so it shows up as the deploy target.
+// The Control Hub / Robot Controller phone is always 192.168.43.1:5555 on its own network.
+// Runs on every Gradle sync and build; does nothing if you're not on the robot's Wi-Fi.
+def connectToRobot() {
+    def robotHost = '192.168.43.1'
+    def robotPort = 5555
+    def target = "${robotHost}:${robotPort}"
+    def adb = new File(android.sdkDirectory, 'platform-tools/' + (System.getProperty('os.name').toLowerCase().contains('win') ? 'adb.exe' : 'adb'))
+    def runAdb = { String... args ->
+        def proc = new ProcessBuilder([adb.absolutePath] + args.toList()).redirectErrorStream(true).start()
+        proc.waitFor(5, java.util.concurrent.TimeUnit.SECONDS)
+        return proc.inputStream.text.trim()
+    }
+
+    def reachable = true
+    try {
+        def socket = new Socket()
+        try {
+            socket.connect(new InetSocketAddress(robotHost, robotPort), 300)
+        } finally {
+            socket.close()
+        }
+    } catch (Exception ignored) {
+        reachable = false // Not on the robot's network
+    }
+
+    try {
+        def state = runAdb('devices').readLines().find { it.startsWith(target) }?.split(/\s+/)?.getAt(1)
+        // Never touch a live connection: Android Studio grabs it before the build runs, and
+        // dropping it mid-build makes the install fail with "Device is offline".
+        if (state == 'device') return
+        // After the hub reboots or Wi-Fi drops, adb keeps the old entry as "offline":
+        // Android Studio still lists it but can't deploy to it, so clear it and reconnect.
+        if (state != null) runAdb('disconnect', target)
+        if (reachable) {
+            logger.lifecycle("Robot: ${runAdb('connect', target)}")
+        }
+    } catch (Exception e) {
+        logger.warn("Robot: adb connect failed: ${e.message}")
+    }
+}
+
+connectToRobot()
+tasks.named('preBuild') { doFirst { connectToRobot() } }
+
 repositories {
     maven { url = "https://maven.brott.dev/" }
     maven { url = "https://repo.dairy.foundation/releases" }

@@ -12,7 +12,7 @@ import org.firstinspires.ftc.teamcode.subsystems.Intake;
 import org.firstinspires.ftc.teamcode.subsystems.Shooter;
 
 @Autonomous
-public class PathAuto extends CommandOpMode {
+public class ExamplePathAuto extends CommandOpMode {
     private Follower follower;
     private Autos autos;
 
