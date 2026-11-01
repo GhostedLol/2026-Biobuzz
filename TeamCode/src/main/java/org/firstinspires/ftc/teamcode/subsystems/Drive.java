@@ -45,14 +45,13 @@ public class Drive extends SubsystemBase {
     public void drive(double y, double x, double rx) {
         double botHeading = Math.toRadians(getHeading());
 
-        // Face the intake (front of the robot) the way we're driving, unless the turn stick is in use.
-        // Stick up is heading 0, heading is CCW positive, so stick right means turning to -90 deg
-        if (Math.abs(rx) < TURN_DEADBAND && Math.hypot(x, y) > DRIVE_DEADBAND) {
-            double targetHeading = Math.atan2(-x, y);
-            double error = Math.IEEEremainder(targetHeading - botHeading, 2 * Math.PI);
-            // Positive rx turns clockwise, so the correction is negated
-            rx = -FACE_KP * error;
-        }
+        //intake forward
+//        if (Math.abs(rx) < TURN_DEADBAND && Math.hypot(x, y) > DRIVE_DEADBAND) {
+//            double targetHeading = Math.atan2(-x, y);
+//            double error = Math.IEEEremainder(targetHeading - botHeading, 2 * Math.PI);
+//            // Positive rx turns clockwise, so the correction is negated
+//            rx = -FACE_KP * error;
+//        }
 
         double rotX = x * Math.cos(-botHeading) - y * Math.sin(-botHeading);
         double rotY = x * Math.sin(-botHeading) + y * Math.cos(-botHeading);
