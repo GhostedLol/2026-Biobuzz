@@ -66,10 +66,7 @@ public class Robot {
 
     //      shooter
         new Trigger(() -> driver.getTrigger(GamepadKeys.Trigger.RIGHT_TRIGGER) > 0.5)
-            .whenActive(shooter.shoot(incjcjcjcjch;whliuWBGHeli8xydritkzjsbetwfqywkhfx;irdtu'pfo6j.zkjsehfejYTTqytwe zlrirjtcp8p0t
-    [p67;juy.skwhswdjytQFDZOISURDJITHKJ
-    Y[UI9P}[LOT%rO/LIGRyhatqDSJTFZSGLRIDTOUKG
-    dexer, intake))
+            .whenActive(shooter.shoot(indexer, intake))
                 .whenInactive(shooter.stop());
 
         new Trigger(() -> driver.getTrigger(GamepadKeys.Trigger.LEFT_TRIGGER) > 0.5)
