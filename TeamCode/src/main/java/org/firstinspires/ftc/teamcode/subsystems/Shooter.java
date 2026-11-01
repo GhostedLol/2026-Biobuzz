@@ -22,8 +22,8 @@ public class Shooter extends SubsystemBase {
     // goBILDA 5000 Series 12VDC motor (5000-0002-4008), 6000 RPM, no gearbox: 28 encoder ticks per revolution
     private static final double TICKS_PER_REV = 28.0;
     // Feed once within this many RPM of the target; the velocity PID tends to settle just under it
-    private static final double RPS_TOLERANCE = 0.5;
-    public final double SHOOTER_RPS = 55;
+    private static final double RPS_TOLERANCE = 1;
+    public final double SHOOTER_RPS = 56.5;
     private static final double BREAKAWAY_RPS = 1.66;
     private static final double RAMP_VOLTS_PER_SECOND = 0.25;
 
@@ -33,7 +33,7 @@ public class Shooter extends SubsystemBase {
     private final VoltageSensor batteryVoltage;
     private final DcMotorEx leftShooter;
     private final DcMotorEx rightShooter;
-    PIDFController pidf = new PIDFController(0.0194, 0, 0, 0);
+    PIDFController pidf = new PIDFController(2, 0, 0, 0);
     SimpleMotorFeedforward feedforward = new SimpleMotorFeedforward(0.4, 0.135, 0.119);
 
     public Shooter(HardwareMap hardwareMap) {
@@ -61,8 +61,7 @@ public class Shooter extends SubsystemBase {
     }
 
     public Command stop() {
-        return Commands.parallel(
-                setPower(0));
+        return run(this::stopMotors);
     }
 
     /** Holds the given speed until the command is cancelled, then stops the motors. */
@@ -80,9 +79,10 @@ public class Shooter extends SubsystemBase {
     }
 
     /** Spins up to the given speed, then feeds with the indexer. Runs until cancelled, then stops both. */
-    public Command shoot(Indexer indexer) {
+    public Command shoot(Indexer indexer, Intake intake) {
         return Commands.parallel(
                 run(),
+                intake.run(1),
                 Commands.waitUntil(this::atRPS).andThen(indexer.feed(1)));
     }
 

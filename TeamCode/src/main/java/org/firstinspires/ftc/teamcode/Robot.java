@@ -53,28 +53,32 @@ public class Robot {
                 drive.run(() -> drive.drive(
                         -gamepad.left_stick_y, gamepad.left_stick_x, gamepad.right_stick_x)));
         intake.setDefaultCommand(intake.stop());
+        indexer.setDefaultCommand(indexer.reverse(0.5));
 
         driver.getGamepadButton(GamepadKeys.Button.OPTIONS)
                 .whenPressed(drive::resetYaw);
 
         driver.getGamepadButton(GamepadKeys.Button.LEFT_BUMPER)
-                .whenPressed(intake.run(-1)).whenInactive(intake.stop());
+                .whenActive(intake.run(-1));
 
         driver.getGamepadButton(GamepadKeys.Button.RIGHT_BUMPER)
                 .whenPressed(shooter.findBreakawayVoltage());
 
     //      shooter
         new Trigger(() -> driver.getTrigger(GamepadKeys.Trigger.RIGHT_TRIGGER) > 0.5)
-                .whenActive(shooter.run())
+            .whenActive(shooter.shoot(incjcjcjcjch;whliuWBGHeli8xydritkzjsbetwfqywkhfx;irdtu'pfo6j.zkjsehfejYTTqytwe zlrirjtcp8p0t
+    [p67;juy.skwhswdjytQFDZOISURDJITHKJ
+    Y[UI9P}[LOT%rO/LIGRyhatqDSJTFZSGLRIDTOUKG
+    dexer, intake))
                 .whenInactive(shooter.stop());
 
         new Trigger(() -> driver.getTrigger(GamepadKeys.Trigger.LEFT_TRIGGER) > 0.5)
                 .whenActive(intake.run(1))
                 .whenInactive(intake.stop());
 
-        new Trigger(shooter::atRPS)
-                .whenActive(Commands.parallel(indexer.run(1), intake.run(1)))
-                .whenInactive(indexer.reverse(0.5));
+//        new Trigger(shooter::atRPS)
+//                .whenActive(Commands.parallel(indexer.run(1), intake.run(1)))
+//                .whenInactive(indexer.reverse(0.5));
 
 
         telemetry.addData("Status", "Initialized");

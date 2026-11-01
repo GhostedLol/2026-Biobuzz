@@ -23,7 +23,7 @@ public class Intake extends SubsystemBase {
     }
 
     public Command run(double power) {
-        return run(() -> setPower(power));
+        return runEnd(() -> setPower(power), () -> setPower(0));
     }
 
     public Command stop() {return run(() -> setPower(0));}

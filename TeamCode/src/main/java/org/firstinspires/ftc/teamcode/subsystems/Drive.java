@@ -20,6 +20,12 @@ public class Drive extends SubsystemBase {
     private final BBRDigitalExpander exp;
     private final boolean gyroCalibrated;
 
+    private static final double TURN_DEADBAND = 0.05;
+    // Below this the stick is treated as released so the robot doesn't spin from stick noise
+    private static final double DRIVE_DEADBAND = 0.2;
+    // Turn power per radian of heading error, raise if it turns too slowly, lower if it wobbles
+    private static final double FACE_KP = 1.0;
+
     public Drive(HardwareMap hardwareMap) {
         frontLeft = hardwareMap.get(DcMotor.class, "frontLeft");
         backLeft = hardwareMap.get(DcMotor.class, "backLeft");
@@ -38,6 +44,15 @@ public class Drive extends SubsystemBase {
 
     public void drive(double y, double x, double rx) {
         double botHeading = Math.toRadians(getHeading());
+
+        // Face the intake (front of the robot) the way we're driving, unless the turn stick is in use.
+        // Stick up is heading 0, heading is CCW positive, so stick right means turning to -90 deg
+        if (Math.abs(rx) < TURN_DEADBAND && Math.hypot(x, y) > DRIVE_DEADBAND) {
+            double targetHeading = Math.atan2(-x, y);
+            double error = Math.IEEEremainder(targetHeading - botHeading, 2 * Math.PI);
+            // Positive rx turns clockwise, so the correction is negated
+            rx = -FACE_KP * error;
+        }
 
         double rotX = x * Math.cos(-botHeading) - y * Math.sin(-botHeading);
         double rotY = x * Math.sin(-botHeading) + y * Math.cos(-botHeading);
@@ -110,6 +125,11 @@ public class Drive extends SubsystemBase {
 
 //        packet.put("pos", exp.getPose());
 //        packet.put("heading", exp.getHeading());
+        packet.put("flPos", frontLeft.getCurrentPosition());
+        packet.put("frPos", frontRight.getCurrentPosition());
+        packet.put("blPos", backLeft.getCurrentPosition());
+        packet.put("brPos", backRight.getCurrentPosition());
+
         packet.put("flPower", frontLeft.getPower());
         packet.put("frPower", frontRight.getPower());
         packet.put("blPower", backLeft.getPower());

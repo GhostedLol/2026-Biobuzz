@@ -7,7 +7,9 @@ import com.pedropathing.api.PoseFactory;
 import com.pedropathing.follower.Follower;
 import com.pedropathing.math.Pose;
 import com.pedropathing.paths.Path;
+import com.qualcomm.hardware.lynx.LynxModule;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
+import com.qualcomm.robotcore.util.ElapsedTime;
 import com.seattlesolvers.solverslib.command.Command;
 import com.seattlesolvers.solverslib.command.CommandOpMode;
 import com.seattlesolvers.solverslib.command.CommandScheduler;
@@ -40,16 +42,16 @@ public class Autos extends CommandOpMode {
 //    Poses
     private final PoseFactory p = PoseFactory.degrees();
 
-    public Command testingSequence() {
-        return Commands.parallel(
-                drive.bl(1).withTimeout(1),
-                drive.bl(1).withTimeout(1),
-                drive.bl(1).withTimeout(1),
-                drive.bl(1).withTimeout(1),
-                intake.run(1),
-                Commands.waitMillis(2000),
-                shooter.shoot(indexer).withTimeout(3000));
-    }
+//    public Command testingSequence() {
+//        return Commands.parallel(
+//                drive.bl(1).withTimeout(1),
+//                drive.bl(1).withTimeout(1),
+//                drive.bl(1).withTimeout(1),
+//                drive.bl(1).withTimeout(1),
+//                intake.run(1),
+//                Commands.waitMillis(2000),
+//                shooter.shoot(indexer, intake).withTimeout(3000));
+//    }
 
     // Pedro poses are in inches and radians, x is forward and y is left of where the robot starts.
     public Command pathAuto() {
@@ -59,14 +61,15 @@ public class Autos extends CommandOpMode {
         Pose shoot = new Pose(56, 7.8, Math.toRadians(90));
 
         Path part1 = line(start, point2).linear(start, point2);
-        Path part2 = line(point3, shoot).linear(point3, shoot);
+        // Start from point2 so the heading turns 180 -> 90 along the path instead of jumping
+        Path part2 = line(point2, shoot).linear(point2, shoot);
 
         return Commands.sequence(
                 drive.runOnce(() -> follower.setPose(start)),
-                intake.run(1),
-                followPath(part1),
-                followPath(part2),
-                shooter.shoot(indexer));
+                Commands.sequence(
+                    followPath(part1).alongWith(intake.run(1)),
+                    followPath(part2),
+                    shooter.shoot(indexer, intake)));
     }
 
     // Only starts the path and waits for it, the OpMode has to call follower.update() every loop.
@@ -83,6 +86,11 @@ public class Autos extends CommandOpMode {
 
     @Override
     public void initialize() {
+        // One hub read per loop for all encoders instead of one per motor, keeps the follower loop fast
+        for (LynxModule hub : hardwareMap.getAll(LynxModule.class)) {
+            hub.setBulkCachingMode(LynxModule.BulkCachingMode.AUTO);
+        }
+
         drive = new Drive(hardwareMap);
         indexer = new Indexer(hardwareMap);
         shooter = new Shooter(hardwareMap);
@@ -94,6 +102,18 @@ public class Autos extends CommandOpMode {
 
         // follower has to update every loop for paths to run
         schedule(new RunCommand(follower::update), pathAuto());
+
+        // Debug: watch loop time and heading while tuning
+        ElapsedTime loopTimer = new ElapsedTime();
+        schedule(new RunCommand(() -> {
+            telemetry.addData("loop ms", "%.1f", loopTimer.milliseconds());
+            loopTimer.reset();
+            telemetry.addData("heading deg", "%.1f", Math.toDegrees(follower.pose().heading()));
+            telemetry.addData("heading vel deg/s", "%.1f", Math.toDegrees(follower.twist().omega));
+            telemetry.addData("pose", follower.pose());
+            telemetry.addData("following", follower.following());
+            telemetry.update();
+        }));
 
         telemetry.addData("Status", "Initialized");
         telemetry.update();

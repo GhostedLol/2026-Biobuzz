@@ -23,7 +23,7 @@ public class Indexer extends SubsystemBase {
     }
 
     public Command feed(double power) {
-        return runEnd(() -> indexerMotor.setPower(power), () -> reverse(1));
+        return runEnd(() -> indexerMotor.setPower(power), () -> indexerMotor.setPower(0));
     }
 
     public Command reverse(double power) {
