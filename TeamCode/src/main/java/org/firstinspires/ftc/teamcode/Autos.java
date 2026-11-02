@@ -3,6 +3,8 @@ import static com.pedropathing.api.Paths.curve;
 import static com.pedropathing.api.Paths.line;
 import static com.pedropathing.api.Paths.path;
 
+import com.acmerobotics.dashboard.FtcDashboard;
+import com.acmerobotics.dashboard.telemetry.TelemetryPacket;
 import com.pedropathing.api.PoseFactory;
 import com.pedropathing.follower.Follower;
 import com.pedropathing.math.Pose;
@@ -16,6 +18,7 @@ import com.seattlesolvers.solverslib.command.CommandScheduler;
 import com.seattlesolvers.solverslib.command.Commands;
 import com.seattlesolvers.solverslib.command.FunctionalCommand;
 import com.seattlesolvers.solverslib.command.RunCommand;
+import com.seattlesolvers.solverslib.geometry.Pose2d;
 
 import org.firstinspires.ftc.teamcode.pedro.Constants;
 import org.firstinspires.ftc.teamcode.subsystems.Drive;
@@ -67,26 +70,34 @@ public class Autos extends CommandOpMode {
         return Commands.sequence(
                 drive.runOnce(() -> follower.setPose(start)),
                 Commands.sequence(
-                    followPath(part1).alongWith(intake.run(1)),
-                    followPath(part2),
-                    shooter.shoot(indexer, intake)));
+                    followPath(part1, point2).alongWith(intake.run(1)),
+                    followPath(part2, shoot),
+                    shooter.run(indexer, intake)));
     }
 
-    // Only starts the path and waits for it, the OpMode has to call follower.update() every loop.
-    private Command followPath(Path path) {
+    public Command turn90() {
+        Pose start = new Pose(136.2, 15, Math.toRadians(180));
+        Pose point2 = new Pose(133, 15, Math.toRadians(90));
+
+        Path path = line(start, point2).linear(start, point2);
+        return Commands.sequence(
+                drive.runOnce(() -> follower.setPose(start)),
+                followPath(path, point2));
+    }
+
+    private Command followPath(Path path, Pose finishPos) {
         return new FunctionalCommand(
                 () -> follower.follow(path),
                 () -> {},
                 interrupted -> {
                     if (interrupted) follower.stop();
                 },
-                () -> !follower.following(),
+                () -> Math.abs(finishPos.x() - drive.getPos().xMm) < 0.5 & Math.abs(finishPos.y() - drive.getPos().yMm) < 0.5 & Math.abs(finishPos.heading() - drive.getPos().headingRad) < 0.15,
                 drive);
     }
 
     @Override
     public void initialize() {
-        // One hub read per loop for all encoders instead of one per motor, keeps the follower loop fast
         for (LynxModule hub : hardwareMap.getAll(LynxModule.class)) {
             hub.setBulkCachingMode(LynxModule.BulkCachingMode.AUTO);
         }
@@ -100,21 +111,26 @@ public class Autos extends CommandOpMode {
         if (follower == null)
             throw new IllegalStateException("Constants.create() returned null, fill in pedro/Constants.java with your tuned values");
 
-        // follower has to update every loop for paths to run
         schedule(new RunCommand(follower::update), pathAuto());
 
-        // Debug: watch loop time and heading while tuning
-        ElapsedTime loopTimer = new ElapsedTime();
         schedule(new RunCommand(() -> {
-            telemetry.addData("loop ms", "%.1f", loopTimer.milliseconds());
-            loopTimer.reset();
+            TelemetryPacket packet = new TelemetryPacket();
+            drive.addTelemetry(packet);
+            intake.addTelemetry(packet);
+            indexer.addTelemetry(packet);
+            shooter.addTelemetry(packet);
+            packet.put("heading deg", Math.toDegrees(follower.pose().heading()));
+            packet.put("heading vel deg/s", Math.toDegrees(follower.twist().omega));
+            packet.put("pose", follower.pose().toString());
+            packet.put("following", follower.following());
+            FtcDashboard.getInstance().sendTelemetryPacket(packet);
+
             telemetry.addData("heading deg", "%.1f", Math.toDegrees(follower.pose().heading()));
             telemetry.addData("heading vel deg/s", "%.1f", Math.toDegrees(follower.twist().omega));
             telemetry.addData("pose", follower.pose());
             telemetry.addData("following", follower.following());
             telemetry.update();
         }));
-
         telemetry.addData("Status", "Initialized");
         telemetry.update();
     }

@@ -15,6 +15,7 @@ import com.seattlesolvers.solverslib.controller.PIDController;
 import com.seattlesolvers.solverslib.controller.PIDFController;
 import com.seattlesolvers.solverslib.controller.wpilibcontroller.SimpleMotorFeedforward;
 
+import java.util.function.BooleanSupplier;
 import java.util.function.DoubleConsumer;
 
 public class Shooter extends SubsystemBase {
@@ -23,13 +24,13 @@ public class Shooter extends SubsystemBase {
     private static final double TICKS_PER_REV = 28.0;
     // Feed once within this many RPM of the target; the velocity PID tends to settle just under it
     private static final double RPS_TOLERANCE = 1;
-    public final double SHOOTER_RPS = 56.5;
+    public final double SHOOTER_RPS = 57;
     private static final double BREAKAWAY_RPS = 1.66;
     private static final double RAMP_VOLTS_PER_SECOND = 0.25;
 
     private double appliedVoltage = 0;
     private double breakawayVoltage = 0;
-
+    
     private final VoltageSensor batteryVoltage;
     private final DcMotorEx leftShooter;
     private final DcMotorEx rightShooter;
@@ -50,41 +51,33 @@ public class Shooter extends SubsystemBase {
         leftShooter.setDirection(DcMotorEx.Direction.REVERSE);
     }
 
-    private void stopMotors() {
-        leftShooter.setPower(0);
-        rightShooter.setPower(0);
-    }
-
-    public double getRPS() {
-        double avgVel = (((leftShooter.getVelocity() + rightShooter.getVelocity()) / 2) / TICKS_PER_REV);
-        return avgVel;
-    }
-
     public Command stop() {
-        return run(this::stopMotors);
+        return runOnce(() -> {
+            leftShooter.setPower(0);
+            rightShooter.setPower(0);
+        });
     }
-
-    /** Holds the given speed until the command is cancelled, then stops the motors. */
     public Command run() {
         pidf.reset();
-          return runEnd(() -> {
-              double pid_output =
-                      pidf.calculate(getRPS(), SHOOTER_RPS);
-              double feed_output =
-                      feedforward.calculate(SHOOTER_RPS, 0);
+        return runEnd(() -> {
+            double pid_output =
+                    pidf.calculate(getRPS(), SHOOTER_RPS);
+            double feed_output =
+                    feedforward.calculate(SHOOTER_RPS, 0);
 
-              leftShooter.setPower((pid_output+feed_output)/batteryVoltage.getVoltage());
-              rightShooter.setPower((pid_output+feed_output)/batteryVoltage.getVoltage());
-        }, this::stopMotors);
+            leftShooter.setPower((pid_output+feed_output)/batteryVoltage.getVoltage());
+            rightShooter.setPower((pid_output+feed_output)/batteryVoltage.getVoltage());
+        }, this::stop);
     }
-
-    /** Spins up to the given speed, then feeds with the indexer. Runs until cancelled, then stops both. */
     public Command shoot(Indexer indexer, Intake intake) {
-        return Commands.parallel(
+        return runEnd(() -> {
+            Commands.parallel(
                 run(),
-                intake.run(1),
+                intake.run(0.5),
                 Commands.waitUntil(this::atRPS).andThen(indexer.feed(1)));
+        }, this::stop);
     }
+
 
     public boolean atRPS() {
         return
@@ -92,37 +85,9 @@ public class Shooter extends SubsystemBase {
                 getRPS() <= (SHOOTER_RPS + RPS_TOLERANCE);
     }
 
-    public Command setPower(double power) {
-        return runEnd(() -> {
-            leftShooter.setPower(power);
-            rightShooter.setPower(power);
-        }, this::stopMotors);
-    }
-
-    /**
-     * Ramps the applied voltage up from zero until the shooter RPM exceeds BREAKAWAY_RPM, then stops.
-     * The voltage at that point is passed to onFound.
-     */
-    public Command findBreakawayVoltage() {
-        ElapsedTime timer = new ElapsedTime();
-        double[] voltage = {0};
-        return new FunctionalCommand(
-                timer::reset,
-                () -> {
-                    voltage[0] = Math.min(timer.seconds() * RAMP_VOLTS_PER_SECOND, batteryVoltage.getVoltage());
-                    appliedVoltage = voltage[0];
-                    double power = voltage[0] / batteryVoltage.getVoltage();
-                    leftShooter.setPower(power);
-                    rightShooter.setPower(power);
-                },
-                interrupted -> {
-                    stopMotors();
-                    if (!interrupted) {
-                        breakawayVoltage = voltage[0];
-                    }
-                },
-                () -> getRPS() > BREAKAWAY_RPS || voltage[0] >= batteryVoltage.getVoltage(),
-                this);
+    public double getRPS() {
+        double avgVel = (((leftShooter.getVelocity() + rightShooter.getVelocity()) / 2) / TICKS_PER_REV);
+        return avgVel;
     }
 
     public void addTelemetry(TelemetryPacket packet) {

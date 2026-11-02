@@ -20,6 +20,8 @@ import org.firstinspires.ftc.teamcode.subsystems.Indexer;
 import org.firstinspires.ftc.teamcode.subsystems.Intake;
 import org.firstinspires.ftc.teamcode.subsystems.Shooter;
 
+import java.util.function.BooleanSupplier;
+
 public class Robot {
     private final Drive drive;
     private final Intake intake;
@@ -48,34 +50,42 @@ public class Robot {
 
         CommandScheduler.getInstance().schedule(new RunCommand(this::robotPeriodic));
 
-//      drive
+
+        //      Drive vroom vroom
         drive.setDefaultCommand(
                 drive.run(() -> drive.drive(
                         -gamepad.left_stick_y, gamepad.left_stick_x, gamepad.right_stick_x)));
-        intake.setDefaultCommand(intake.stop());
-        indexer.setDefaultCommand(indexer.reverse(0.5));
-
         driver.getGamepadButton(GamepadKeys.Button.OPTIONS)
                 .whenPressed(drive::resetYaw);
 
-        driver.getGamepadButton(GamepadKeys.Button.LEFT_BUMPER)
-                .whenActive(intake.run(-1));
 
-        driver.getGamepadButton(GamepadKeys.Button.RIGHT_BUMPER)
-                .whenPressed(shooter.findBreakawayVoltage());
-
-    //      shooter
-        new Trigger(() -> driver.getTrigger(GamepadKeys.Trigger.RIGHT_TRIGGER) > 0.5)
-            .whenActive(shooter.shoot(indexer, intake))
-                .whenInactive(shooter.stop());
-
+        //      Intake oooooo
         new Trigger(() -> driver.getTrigger(GamepadKeys.Trigger.LEFT_TRIGGER) > 0.5)
                 .whenActive(intake.run(1))
                 .whenInactive(intake.stop());
 
-//        new Trigger(shooter::atRPS)
-//                .whenActive(Commands.parallel(indexer.run(1), intake.run(1)))
-//                .whenInactive(indexer.reverse(0.5));
+        driver.getGamepadButton(GamepadKeys.Button.LEFT_BUMPER)
+                .whenActive(intake.run(-1));
+
+        intake.setDefaultCommand(intake.stop());
+
+
+        //      Shooter ︻デ═一
+        Trigger shootTrigger = new Trigger(() -> driver.getTrigger(GamepadKeys.Trigger.RIGHT_TRIGGER) > 0.5)
+                .whenActive(shooter.run())
+                .whenInactive(shooter.stop());
+
+
+        //      Indexer! Only runs while both A and the right trigger are held
+        driver.getGamepadButton(GamepadKeys.Button.A).and(shootTrigger)
+                .whileActiveOnce(indexer.reverse(0.5).interruptOn(shooter::atRPS).andThen(indexer.feed(1)));
+
+        driver.getGamepadButton(GamepadKeys.Button.X)
+                .whenActive(indexer.feed(1))
+                .whenInactive(indexer.stop());
+
+        indexer.setDefaultCommand(indexer.reverse(0.5));
+
 
 
         telemetry.addData("Status", "Initialized");
@@ -88,6 +98,7 @@ public class Robot {
         intake.addTelemetry(packet);
         indexer.addTelemetry(packet);
         shooter.addTelemetry(packet);
+        flower.addTelemetry(packet);
 
         double loop_time = looptimer.milliseconds();
         looptimer.reset();
@@ -98,3 +109,11 @@ public class Robot {
         telemetry.update();
     }
 }
+
+//Controller docs
+//Spin shoot: hold the right trigger.
+//Index: hold A (only works when shooter has spun up).
+//Intake: hold the left trigger.
+//Outtake: hold the left bumper.
+//Reset yaw: press options
+//Force index: hold X
